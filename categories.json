@@ -1,0 +1,10 @@
+{
+  "categories": [
+    {"id":"plastic","name":"플라스틱","labels":["a plastic bottle","plastic container","plastic packaging"],"tips":["내용물을 비우고 물로 가볍게 헹궈주세요.","다른 재질의 뚜껑·라벨은 가능한 한 분리하세요.","지역 기준에 따라 투명 페트병은 별도 배출하세요."]},
+    {"id":"can","name":"캔","labels":["an aluminum can","a metal can","a beverage can"],"tips":["내용물을 비우고 헹군 뒤 압착해 주세요.","날카로운 부분이 생기지 않도록 주의하세요."]},
+    {"id":"glass","name":"유리","labels":["a glass bottle","a glass jar","glass packaging"],"tips":["내용물을 비우고 헹군 뒤 뚜껑을 분리하세요.","깨진 유리는 재활용함이 아닌 종량제·불연성 기준을 확인하세요."]},
+    {"id":"paper","name":"종이","labels":["paper packaging","a cardboard box","paper"],"tips":["테이프·송장·비닐 코팅을 제거하고 펼쳐서 배출하세요.","젖거나 음식물이 묻은 종이는 일반쓰레기로 확인하세요."]},
+    {"id":"vinyl","name":"비닐","labels":["a plastic film bag","a vinyl packaging bag","soft plastic packaging"],"tips":["내용물을 비우고 깨끗한 비닐만 모아 배출하세요.","음식물·기름이 묻은 비닐은 일반쓰레기로 확인하세요."]},
+    {"id":"general","name":"일반쓰레기","labels":["general waste","non-recyclable trash","a disposable item"],"tips":["재활용이 어려운 오염·복합 재질은 종량제 기준을 확인하세요.","내용물과 위험물을 분리해 안전하게 배출하세요."]}
+  ]
+}

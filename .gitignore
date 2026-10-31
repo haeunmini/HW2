@@ -1,0 +1,36 @@
+# Python cache and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Model and tool caches
+.cache/
+cache/
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Secrets and local configuration
+.env
+.env.*
+*.key
+*.pem
+secrets.*
+
+# Runtime output
+*.log
+logs/
+uploads/
+tmp/
+temp/
+
+# Local test artifacts
+test_images/
+*.jpg
+*.jpeg
+*.png
+*.webp
