@@ -1,0 +1,11 @@
+﻿{
+  "agentId": 2,
+  "agentName": "WIN-BSNVJN5LM7A",
+  "poolId": 1,
+  "poolName": "Default",
+  "serverUrl": "https://pipelinesghubeus12.actions.githubusercontent.com/GKN93OAbo2VTk7iAJumtOBmXpz7XBX6TNJrKNbjoAMV2xlhz7V/",
+  "gitHubUrl": "https://github.com/haeunmini/HW2",
+  "workFolder": "_work",
+  "useV2Flow": true,
+  "serverUrlV2": "https://broker.actions.githubusercontent.com/"
+}
