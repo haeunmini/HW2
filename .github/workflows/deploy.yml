@@ -18,8 +18,9 @@ jobs:
     # The runner must be the registered Windows machine with Docker Desktop.
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, Windows]
+    timeout-minutes: 45
     env:
-      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/waste-classifier:latest
+      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/waste-classifier:${{ github.event.workflow_run.head_sha || github.sha }}
       CONTAINER_NAME: waste-classifier
     steps:
       - name: Check out monitoring script
@@ -93,13 +94,13 @@ jobs:
         shell: powershell
         run: |
           $log = Join-Path $env:RUNNER_TEMP 'monitor.jsonl'
-          $rows = @(); if (Test-Path $log) { $rows = Get-Content $log | ForEach-Object { $_ | ConvertFrom-Json } }
+          $rows = @(); if (Test-Path $log) { $rows = @(Get-Content $log | ForEach-Object { try { $_ | ConvertFrom-Json } catch { } }) }
           $success = @($rows | Where-Object success).Count
           $failure = @($rows | Where-Object { -not $_.success }).Count
           $versions = @($rows | Where-Object version | Select-Object -ExpandProperty version -Unique) -join ', '
           $gaps = @(); for ($i=1; $i -lt $rows.Count; $i++) { $gaps += (([datetime]$rows[$i].start)-([datetime]$rows[$i-1].end)).TotalSeconds }
           $maxGap = if ($gaps.Count) { [math]::Round(($gaps | Measure-Object -Maximum).Maximum, 2) } else { 'n/a' }
-          @("## Local deployment verification", "- Address: http://127.0.0.1:8000/api/health", "- Monitor: /api/analyze with fixed image; nominal interval: 1 second", "- Requests: $($rows.Count); success: $success; failure: $failure", "- Observed versions: $versions", "- Maximum unobserved gap: $maxGap seconds (gaps are unverified intervals)", "- Logs: UTF-8 JSONL artifact `deployment-monitor-log`") | Add-Content $env:GITHUB_STEP_SUMMARY
+          @("## Local deployment verification", "- Address: http://127.0.0.1:8000/api/health", "- Monitor: /api/analyze with fixed image; nominal interval: 1 second", "- Requests: $($rows.Count); success: $success; failure: $failure", "- Observed versions: $versions", "- Maximum unobserved gap: $maxGap seconds (gaps are unverified intervals)", "- Logs: UTF-8 JSONL artifact `deployment-monitor-log`") | Add-Content -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           if (Test-Path $log) { Copy-Item $log (Join-Path $env:GITHUB_WORKSPACE 'deployment-monitor.jsonl') }
 
       - name: Upload monitoring logs
