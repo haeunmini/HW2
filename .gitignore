@@ -34,3 +34,10 @@ test_images/
 *.jpeg
 *.png
 *.webp
+
+# GitHub Actions self-hosted runner files
+actions-runner/
+_diag/
+_work/
+_tool/
+_temp/

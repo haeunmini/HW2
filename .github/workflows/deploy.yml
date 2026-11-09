@@ -1,0 +1,64 @@
+name: Deploy Docker image to local Windows runner
+
+on:
+  workflow_run:
+    workflows: ["Build and publish Docker image"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-waste-classifier-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # The runner must be the registered Windows machine with Docker Desktop.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: [self-hosted, Windows]
+    env:
+      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/waste-classifier:latest
+      CONTAINER_NAME: waste-classifier
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull the newly published image
+        shell: powershell
+        run: docker pull $env:IMAGE
+
+      - name: Replace the local container
+        shell: powershell
+        run: |
+          $existing = docker ps -aq --filter "name=^$env:CONTAINER_NAME$"
+          if ($existing) {
+            docker stop $env:CONTAINER_NAME
+            docker rm $env:CONTAINER_NAME
+          }
+          docker run --detach --name $env:CONTAINER_NAME --restart unless-stopped --publish 8000:8000 $env:IMAGE
+
+      - name: Verify application health
+        shell: powershell
+        run: |
+          $uri = 'http://127.0.0.1:8000/api/health'
+          $deadline = (Get-Date).AddMinutes(3)
+          do {
+            try {
+              $response = Invoke-RestMethod -Uri $uri -TimeoutSec 10
+              $response | ConvertTo-Json -Compress
+              if ($response.ok -and $response.model_loaded -and -not $response.model_error) {
+                exit 0
+              }
+            } catch {
+              Write-Host "Health check not ready: $($_.Exception.Message)"
+            }
+            Start-Sleep -Seconds 5
+          } while ((Get-Date) -lt $deadline)
+          Write-Host 'Container logs:'
+          docker logs $env:CONTAINER_NAME
+          throw 'The application did not report a loaded model at /api/health.'
