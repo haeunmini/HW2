@@ -41,3 +41,11 @@ _diag/
 _work/
 _tool/
 _temp/
+deployment-monitor.jsonl
+data/benchmark/
+hf-meta.json
+hf-search.json
+data/benchmark-manifest.json
+benchmark-results.json
+benchmark-attempt1.json
+*.csv

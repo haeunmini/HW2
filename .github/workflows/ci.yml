@@ -32,5 +32,6 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/waste-classifier:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/waste-classifier:${{ github.sha }}
+          build-args: GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

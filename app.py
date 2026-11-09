@@ -10,6 +10,7 @@ ROOT = Path(__file__).parent
 with open(ROOT / "categories.json", encoding="utf-8") as f:
     CONFIG = json.load(f)
 MODEL_ID = os.getenv("WASTE_MODEL", "openai/clip-vit-base-patch32")
+DEPLOY_VERSION = os.getenv("APP_VERSION", "dev")
 classifier = None
 model_error: Optional[str] = None
 
@@ -49,7 +50,7 @@ def index():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "model": MODEL_ID, "model_loaded": classifier is not None, "model_error": model_error}
+    return {"ok": True, "version": DEPLOY_VERSION, "model": MODEL_ID, "model_loaded": classifier is not None, "model_error": model_error}
 
 @app.post("/api/analyze")
 async def analyze(file: UploadFile = File(...)):
@@ -63,5 +64,5 @@ async def analyze(file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(400, "손상되었거나 지원하지 않는 이미지입니다.")
     category, probability, method = classify(image)
-    return {"category": category["name"], "category_id": category["id"], "probability": probability, "method": method, "tips": category["tips"], "notice":"AI 분석 결과는 추정치입니다. 지역·지자체별 분리배출 기준이 다를 수 있으니 반드시 지역 안내를 확인하세요."}
+    return {"category": category["name"], "category_id": category["id"], "probability": probability, "method": method, "tips": category["tips"], "version": DEPLOY_VERSION, "model": MODEL_ID, "notice":"AI 분석 결과는 추정치입니다. 지역·지자체별 분리배출 기준이 다를 수 있으니 반드시 지역 안내를 확인하세요."}
 

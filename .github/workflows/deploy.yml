@@ -22,6 +22,26 @@ jobs:
       IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/waste-classifier:latest
       CONTAINER_NAME: waste-classifier
     steps:
+      - name: Check out monitoring script
+        uses: actions/checkout@v4
+
+      - name: Prepare fixed verification image
+        shell: powershell
+        run: |
+          $bytes = [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')
+          [IO.File]::WriteAllBytes((Join-Path $env:RUNNER_TEMP 'fixed-test.png'), $bytes)
+          New-Item -ItemType File -Force -Path (Join-Path $env:RUNNER_TEMP 'monitor.jsonl') | Out-Null
+
+      - name: Start independent pre-deployment monitor
+        shell: powershell
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'monitor.jsonl'
+          $script = Join-Path $env:GITHUB_WORKSPACE 'scripts/monitor.ps1'
+          $p = Start-Process powershell -ArgumentList "-NoProfile -File `"$script`" -ImagePath `"$env:RUNNER_TEMP/fixed-test.png`" -LogPath `"$log`" -DurationSeconds 210" -PassThru
+          Set-Content -Path (Join-Path $env:RUNNER_TEMP 'monitor.pid') -Value $p.Id
+          Start-Sleep -Seconds 3
+          try { Invoke-RestMethod http://127.0.0.1:8000/api/health | ConvertTo-Json -Compress } catch { Write-Host 'No pre-deployment service response (expected on first deployment).' }
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -62,3 +82,30 @@ jobs:
           Write-Host 'Container logs:'
           docker logs $env:CONTAINER_NAME
           throw 'The application did not report a loaded model at /api/health.'
+
+      - name: Keep monitoring after deployment
+        if: always()
+        shell: powershell
+        run: Start-Sleep -Seconds 30
+
+      - name: Publish monitoring summary and logs
+        if: always()
+        shell: powershell
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'monitor.jsonl'
+          $rows = @(); if (Test-Path $log) { $rows = Get-Content $log | ForEach-Object { $_ | ConvertFrom-Json } }
+          $success = @($rows | Where-Object success).Count
+          $failure = @($rows | Where-Object { -not $_.success }).Count
+          $versions = @($rows | Where-Object version | Select-Object -ExpandProperty version -Unique) -join ', '
+          $gaps = @(); for ($i=1; $i -lt $rows.Count; $i++) { $gaps += (([datetime]$rows[$i].start)-([datetime]$rows[$i-1].end)).TotalSeconds }
+          $maxGap = if ($gaps.Count) { [math]::Round(($gaps | Measure-Object -Maximum).Maximum, 2) } else { 'n/a' }
+          @("## Local deployment verification", "- Address: http://127.0.0.1:8000/api/health", "- Monitor: /api/analyze with fixed image; nominal interval: 1 second", "- Requests: $($rows.Count); success: $success; failure: $failure", "- Observed versions: $versions", "- Maximum unobserved gap: $maxGap seconds (gaps are unverified intervals)", "- Logs: UTF-8 JSONL artifact `deployment-monitor-log`") | Add-Content $env:GITHUB_STEP_SUMMARY
+          if (Test-Path $log) { Copy-Item $log (Join-Path $env:GITHUB_WORKSPACE 'deployment-monitor.jsonl') }
+
+      - name: Upload monitoring logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-monitor-log
+          path: deployment-monitor.jsonl
+          if-no-files-found: warn

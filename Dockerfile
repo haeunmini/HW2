@@ -1,11 +1,14 @@
 FROM python:3.11-slim
 
+ARG GIT_SHA=dev
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     HF_HOME=/opt/huggingface \
     TRANSFORMERS_CACHE=/opt/huggingface \
-    WASTE_MODEL=/opt/models/clip
+    WASTE_MODEL=/opt/models/clip \
+    APP_VERSION=${GIT_SHA}
 
 WORKDIR /app
 
