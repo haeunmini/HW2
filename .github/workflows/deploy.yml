@@ -40,6 +40,7 @@ jobs:
           $script = Join-Path $env:GITHUB_WORKSPACE 'scripts/monitor.ps1'
           $p = Start-Process powershell -ArgumentList "-NoProfile -File `"$script`" -ImagePath `"$env:RUNNER_TEMP/fixed-test.png`" -LogPath `"$log`" -DurationSeconds 210" -PassThru
           Set-Content -Path (Join-Path $env:RUNNER_TEMP 'monitor.pid') -Value $p.Id
+          (Get-Date).ToUniversalTime().ToString('o') | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'monitor-start.txt')
           Start-Sleep -Seconds 3
           try { Invoke-RestMethod http://127.0.0.1:8000/api/health | ConvertTo-Json -Compress } catch { Write-Host 'No pre-deployment service response (expected on first deployment).' }
 
@@ -51,7 +52,9 @@ jobs:
 
       - name: Pull the newly published image
         shell: powershell
-        run: docker pull $env:IMAGE
+        run: |
+          (Get-Date).ToUniversalTime().ToString('o') | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'deploy-start.txt')
+          docker pull $env:IMAGE
 
       - name: Replace the local container
         shell: powershell
@@ -73,6 +76,7 @@ jobs:
               $response = Invoke-RestMethod -Uri $uri -TimeoutSec 10
               $response | ConvertTo-Json -Compress
               if ($response.ok -and $response.model_loaded -and -not $response.model_error) {
+                (Get-Date).ToUniversalTime().ToString('o') | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'deploy-end.txt')
                 exit 0
               }
             } catch {
