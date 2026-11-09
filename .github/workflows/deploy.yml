@@ -33,17 +33,6 @@ jobs:
           [IO.File]::WriteAllBytes((Join-Path $env:RUNNER_TEMP 'fixed-test.png'), $bytes)
           New-Item -ItemType File -Force -Path (Join-Path $env:RUNNER_TEMP 'monitor.jsonl') | Out-Null
 
-      - name: Start independent pre-deployment monitor
-        shell: powershell
-        run: |
-          $log = Join-Path $env:RUNNER_TEMP 'monitor.jsonl'
-          $script = Join-Path $env:GITHUB_WORKSPACE 'scripts/monitor.ps1'
-          $p = Start-Process powershell -ArgumentList "-NoProfile -File `"$script`" -ImagePath `"$env:RUNNER_TEMP/fixed-test.png`" -LogPath `"$log`" -DurationSeconds 210" -PassThru
-          Set-Content -Path (Join-Path $env:RUNNER_TEMP 'monitor.pid') -Value $p.Id
-          (Get-Date).ToUniversalTime().ToString('o') | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'monitor-start.txt')
-          Start-Sleep -Seconds 3
-          try { Invoke-RestMethod http://127.0.0.1:8000/api/health | ConvertTo-Json -Compress } catch { Write-Host 'No pre-deployment service response (expected on first deployment).' }
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -55,6 +44,19 @@ jobs:
         run: |
           (Get-Date).ToUniversalTime().ToString('o') | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'deploy-start.txt')
           docker pull $env:IMAGE
+
+      - name: Start independent pre-deployment monitor
+        shell: powershell
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'monitor.jsonl'
+          $stop = Join-Path $env:RUNNER_TEMP 'monitor-complete.txt'
+          $script = Join-Path $env:GITHUB_WORKSPACE 'scripts/monitor.ps1'
+          Remove-Item $stop -Force -ErrorAction SilentlyContinue
+          $p = Start-Process powershell -ArgumentList "-NoProfile -File `"$script`" -ImagePath `"$env:RUNNER_TEMP/fixed-test.png`" -LogPath `"$log`" -StopFile `"$stop`"" -PassThru
+          Set-Content -Path (Join-Path $env:RUNNER_TEMP 'monitor.pid') -Value $p.Id
+          (Get-Date).ToUniversalTime().ToString('o') | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'monitor-start.txt')
+          Start-Sleep -Seconds 3
+          try { Invoke-RestMethod http://127.0.0.1:8000/api/health | ConvertTo-Json -Compress } catch { Write-Host 'No pre-deployment service response.' }
 
       - name: Replace the local container
         shell: powershell
@@ -88,10 +90,12 @@ jobs:
           docker logs $env:CONTAINER_NAME
           throw 'The application did not report a loaded model at /api/health.'
 
-      - name: Keep monitoring after deployment
+      - name: Keep monitoring for 30 seconds after deployment
         if: always()
         shell: powershell
-        run: Start-Sleep -Seconds 30
+        run: |
+          Start-Sleep -Seconds 30
+          (Get-Date).ToUniversalTime().ToString('o') | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'monitor-complete.txt')
 
       - name: Publish monitoring summary and logs
         if: always()
