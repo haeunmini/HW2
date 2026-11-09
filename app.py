@@ -39,6 +39,10 @@ def classify(image: Image.Image):
 app = FastAPI(title="쓰레기 분리배출 분류기")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
+# Load the model when the application starts so /api/health reports the real
+# readiness state and the first user request does not pay the model load cost.
+get_classifier()
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return (ROOT / "static" / "index.html").read_text(encoding="utf-8")

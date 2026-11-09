@@ -1,0 +1,12 @@
+.git
+.github
+__pycache__
+*.py[cod]
+.venv
+venv
+env
+.cache
+cache
+models
+*.log
+test_images
